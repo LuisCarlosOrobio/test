@@ -5,28 +5,28 @@
     <title>Image Processor</title>
 </head>
 <body>
-    <form enctype="multipart/form-data" action="/process-image/" method="post">
-        <input type="file" name="image" id="imageUploader" />
-        <button type="submit">Upload</button>
-    </form>
+    <input type="file" id="imageUploader" />
+    <button onclick="uploadImage()">Upload</button>
     <pre id="output"></pre>
 
     <script>
-        document.querySelector("form").addEventListener("submit", async function(event) {
-            event.preventDefault();
-            const formData = new FormData(this);
-            try {
-                const response = await fetch('/process-image/', {
-                    method: 'POST',
-                    body: formData,
-                });
-                const result = await response.json();
-                document.getElementById('output').innerText = result.description;
-            } catch (error) {
-                console.error("Error uploading the image:", error);
-                document.getElementById('output').innerText = "An error occurred.";
+        const ws = new WebSocket('ws://localhost:5000/ws/process-image/');
+
+        ws.onmessage = function(event) {
+            document.getElementById('output').innerText = event.data;
+        };
+
+        function uploadImage() {
+            const fileInput = document.getElementById('imageUploader');
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    ws.send(event.target.result);
+                };
+                reader.readAsArrayBuffer(file);
             }
-        });
+        }
     </script>
 </body>
 </html>
