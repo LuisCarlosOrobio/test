@@ -1,42 +1,56 @@
-const outputElement = document.getElementById('output');
-let ws;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Image Processor</title>
+</head>
+<body>
+    <input type="file" name="image" id="imageUploader" />
+    <button onclick="uploadImage()">Upload</button>
+    <pre id="output"></pre>
 
-function createWebSocketConnection() {
-    ws = new WebSocket('ws://localhost:8000/ws/process-image/');
+    <script>
+        const outputElement = document.getElementById('output');
+        let ws;
 
-    ws.onmessage = function(event) {
-        outputElement.innerText = event.data;
-    };
+        function createWebSocketConnection() {
+            ws = new WebSocket('ws://localhost:8000/ws/process-image/');
 
-    ws.onerror = function(error) {
-        outputElement.innerText = "WebSocket Error: " + error;
-    };
+            ws.onmessage = function(event) {
+                outputElement.innerText = event.data;
+            };
 
-    ws.onclose = function(event) {
-        if (event.wasClean) {
-            outputElement.innerText = `Connection closed cleanly, code=${event.code}, reason=${event.reason}`;
-        } else {
-            outputElement.innerText = 'Connection died';
+            ws.onerror = function(error) {
+                outputElement.innerText = "WebSocket Error: " + error;
+            };
+
+            ws.onclose = function(event) {
+                if (event.wasClean) {
+                    outputElement.innerText = `Connection closed cleanly, code=${event.code}, reason=${event.reason}`;
+                } else {
+                    outputElement.innerText = 'Connection died';
+                }
+            };
         }
-    };
-}
 
-function uploadImage() {
-    const fileInput = document.getElementById('imageUploader');
-    const file = fileInput.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(event.target.result);
-            } else {
-                outputElement.innerText = "WebSocket is not open. Please try again.";
+        function uploadImage() {
+            const fileInput = document.getElementById('imageUploader');
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(event.target.result);
+                    } else {
+                        outputElement.innerText = "WebSocket is not open. Please try again.";
+                    }
+                };
+                reader.readAsArrayBuffer(file);
             }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-}
+        }
 
-// Initiate the WebSocket connection when the page loads
-createWebSocketConnection();
-
+        // Initiate the WebSocket connection when the page loads
+        createWebSocketConnection();
+    </script>
+</body>
+</html>
