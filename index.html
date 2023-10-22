@@ -2,55 +2,53 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Image Processor</title>
 </head>
 <body>
-    <input type="file" name="image" id="imageUploader" />
-    <button onclick="uploadImage()">Upload</button>
-    <pre id="output"></pre>
+    <input type="file" id="imageInput">
+    <button onclick="sendImage()">Process Image</button>
+    <div id="output"></div>
 
     <script>
-        const outputElement = document.getElementById('output');
-        let ws;
+        let ws = new WebSocket("ws://localhost:8000/ws/process-image/");
 
-        function createWebSocketConnection() {
-            ws = new WebSocket('ws://localhost:8000/ws/process-image/');
+        ws.onopen = (event) => {
+            console.log("WebSocket is open now.");
+        };
 
-            ws.onmessage = function(event) {
-                outputElement.innerText = event.data;
-            };
+        ws.onclose = (event) => {
+            if (event.wasClean) {
+                console.log(`Closed cleanly, code=${event.code}, reason=${event.reason}`);
+            } else {
+                console.error("Connection died");
+            }
+        };
 
-            ws.onerror = function(error) {
-                outputElement.innerText = "WebSocket Error: " + error;
-            };
+        ws.onerror = (error) => {
+            console.error(`WebSocket Error: ${error.message}`);
+        };
 
-            ws.onclose = function(event) {
-                if (event.wasClean) {
-                    outputElement.innerText = `Connection closed cleanly, code=${event.code}, reason=${event.reason}`;
-                } else {
-                    outputElement.innerText = 'Connection died';
-                }
-            };
-        }
+        ws.onmessage = (event) => {
+            document.getElementById("output").innerText = event.data;
+        };
 
-        function uploadImage() {
-            const fileInput = document.getElementById('imageUploader');
+        function sendImage() {
+            const fileInput = document.getElementById("imageInput");
             const file = fileInput.files[0];
+
             if (file) {
                 const reader = new FileReader();
+
                 reader.onload = function(event) {
-                    if (ws.readyState === WebSocket.OPEN) {
-                        ws.send(event.target.result);
-                    } else {
-                        outputElement.innerText = "WebSocket is not open. Please try again.";
-                    }
+                    ws.send(event.target.result);
                 };
+
                 reader.readAsArrayBuffer(file);
+            } else {
+                alert("Please select an image first.");
             }
         }
-
-        // Initiate the WebSocket connection when the page loads
-        createWebSocketConnection();
     </script>
 </body>
 </html>
