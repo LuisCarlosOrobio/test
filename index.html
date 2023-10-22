@@ -1,32 +1,42 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Image Processor</title>
-</head>
-<body>
-    <input type="file" id="imageUploader" />
-    <button onclick="uploadImage()">Upload</button>
-    <pre id="output"></pre>
+const outputElement = document.getElementById('output');
+let ws;
 
-    <script>
-        const ws = new WebSocket('ws://localhost:5000/ws/process-image/');
+function createWebSocketConnection() {
+    ws = new WebSocket('ws://localhost:8000/ws/process-image/');
 
-        ws.onmessage = function(event) {
-            document.getElementById('output').innerText = event.data;
-        };
+    ws.onmessage = function(event) {
+        outputElement.innerText = event.data;
+    };
 
-        function uploadImage() {
-            const fileInput = document.getElementById('imageUploader');
-            const file = fileInput.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    ws.send(event.target.result);
-                };
-                reader.readAsArrayBuffer(file);
-            }
+    ws.onerror = function(error) {
+        outputElement.innerText = "WebSocket Error: " + error;
+    };
+
+    ws.onclose = function(event) {
+        if (event.wasClean) {
+            outputElement.innerText = `Connection closed cleanly, code=${event.code}, reason=${event.reason}`;
+        } else {
+            outputElement.innerText = 'Connection died';
         }
-    </script>
-</body>
-</html>
+    };
+}
+
+function uploadImage() {
+    const fileInput = document.getElementById('imageUploader');
+    const file = fileInput.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(event.target.result);
+            } else {
+                outputElement.innerText = "WebSocket is not open. Please try again.";
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+// Initiate the WebSocket connection when the page loads
+createWebSocketConnection();
+
