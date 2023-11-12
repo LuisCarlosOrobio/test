@@ -1,52 +1,48 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Processor</title>
+    <title>Audio Transcription Test</title>
 </head>
 <body>
-    <input type="file" id="imageInput">
-    <button onclick="sendImage()">Process Image</button>
-    <div id="output"></div>
-
+    <h1>Audio Transcription Test</h1>
+    <button id="start">Start Recording</button>
+    <button id="stop" disabled>Stop Recording</button>
     <script>
-        let ws = new WebSocket("ws://localhost:8000/ws/process-image/");
+        let mediaRecorder;
+        let audioChunks = [];
 
-        ws.onopen = (event) => {
-            console.log("WebSocket is open now.");
-        };
+        document.getElementById("start").addEventListener("click", async () => {
+            audioChunks = [];
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+            };
+            mediaRecorder.start();
+            document.getElementById("start").disabled = true;
+            document.getElementById("stop").disabled = false;
+        });
 
-        ws.onclose = (event) => {
-            if (event.wasClean) {
-                console.log(`Closed cleanly, code=${event.code}, reason=${event.reason}`);
-            } else {
-                console.error("Connection died");
-            }
-        };
+        document.getElementById("stop").addEventListener("click", () => {
+            mediaRecorder.stop();
+            document.getElementById("start").disabled = false;
+            document.getElementById("stop").disabled = true;
+            sendData();
+        });
 
-        ws.onerror = (error) => {
-            console.error(`WebSocket Error: ${error.message}`);
-        };
-
-        ws.onmessage = (event) => {
-            document.getElementById("output").innerText = event.data;
-        };
-
-        function sendImage() {
-            const fileInput = document.getElementById("imageInput");
-            const file = fileInput.files[0];
-
-            if (file) {
-                const reader = new FileReader();
-
-                reader.onload = function(event) {
-                    ws.send(event.target.result);
-                };
-
-                reader.readAsArrayBuffer(file);
-            } else {
-                alert("Please select an image first.");
+        async function sendData() {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            const formData = new FormData();
+            formData.append("audio_data", audioBlob);
+            try {
+                const response = await fetch("http://localhost:5001/whisper", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+                console.log(data);
+            } catch (error) {
+                console.error(error);
             }
         }
     </script>
